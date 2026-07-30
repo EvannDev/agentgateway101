@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: openwebui-helm
+  namespace: openwebui
+spec:
+  destination:
+    namespace: openwebui
+    server: https://kubernetes.default.svc
+  project: platform
+  source:
+    chart: openwebui
+    repoURL: https://open-webui.github.io/helm-charts
+    targetRevision: 15.2.1
+  syncPolicy:
+    automated:
+      # Prune resources during auto-syncing (default is false)
+      prune: true 
+      # Sync the app in part when resources are changed only in the target Kubernetes cluster
+      # but not in the git source (default is false).
+      selfHeal: true 
+    syncOptions:
+    - CreateNamespace=true

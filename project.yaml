@@ -11,6 +11,7 @@ spec:
   - https://github.com/EvannDev/agentgateway101.git
   # Registry OCI des charts agentgateway
   - cr.agentgateway.dev/charts
+  - https://open-webui.github.io/helm-charts
 
   destinations:
   # Les Application CR générées par l'ApplicationSet
@@ -19,6 +20,8 @@ spec:
   # Les workloads agentgateway
   - server: https://kubernetes.default.svc
     namespace: agentgateway-system
+  - server: https://kubernetes.default.svc
+    namespace: openwebui
 
   # Les CRDs sont cluster-scoped : sans cette liste, la sync des charts *-crds
   # échoue avec "resource is not permitted in project".
