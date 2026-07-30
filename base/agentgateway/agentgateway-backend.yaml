@@ -12,3 +12,18 @@ spec:
     auth:
       secretRef:
         name: google-secret
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: anthropic
+  namespace: agentgateway-system
+spec:
+  ai:
+    provider:
+      anthropic:
+        model: "claude-opus-4-6"
+  policies:
+    auth:
+      secretRef:
+        name: anthropic-secret
