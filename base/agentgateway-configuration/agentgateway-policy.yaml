@@ -7,10 +7,10 @@ spec:
   targetRefs:
     - group: gateway.networking.k8s.io
       kind: HTTPRoute
-      name: google
+      name: anthropic
   traffic: 
     authorization: 
       action: Allow
       policy: 
         matchExpressions:
-          - "request.headers['x-llm'] == 'gemini'"
+          - "request.headers['x-llm'] == 'anthropic'"
