@@ -1,0 +1,41 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+spec:
+  description: Bootstrap et composants plateforme (agentgateway)
+
+  sourceRepos:
+  # Repo GitOps (ApplicationSet + Application CR)
+  - https://github.com/EvannDev/agentgateway101.git
+  # Registry OCI des charts agentgateway
+  - cr.agentgateway.dev/charts
+
+  destinations:
+  # Les Application CR générées par l'ApplicationSet
+  - server: https://kubernetes.default.svc
+    namespace: argocd
+  # Les workloads agentgateway
+  - server: https://kubernetes.default.svc
+    namespace: agentgateway-system
+
+  # Les CRDs sont cluster-scoped : sans cette liste, la sync des charts *-crds
+  # échoue avec "resource is not permitted in project".
+  clusterResourceWhitelist:
+  - group: apiextensions.k8s.io
+    kind: CustomResourceDefinition
+  - group: rbac.authorization.k8s.io
+    kind: ClusterRole
+  - group: rbac.authorization.k8s.io
+    kind: ClusterRoleBinding
+  - group: admissionregistration.k8s.io
+    kind: ValidatingWebhookConfiguration
+  - group: admissionregistration.k8s.io
+    kind: MutatingWebhookConfiguration
+  - group: ""
+    kind: Namespace
+
+  namespaceResourceWhitelist:
+  - group: '*'
+    kind: '*'

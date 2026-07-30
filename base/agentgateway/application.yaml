@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: agentgateway-crds
+  namespace: argocd
+  annotations:
+    # Wave négative : les CRDs sont synchronisées avant tout autre composant
+    # agentgateway ajouté dans ce dossier (contrôleur, gateway, policies...).
+    argocd.argoproj.io/sync-wave: "-1"
+  # Pas de resources-finalizer ici volontairement : supprimer cette Application
+  # ne doit pas supprimer les CRDs (et donc toutes les CR associées).
+spec:
+  project: platform
+  destination:
+    namespace: agentgateway-system
+    server: https://kubernetes.default.svc
+  source:
+    chart: agentgateway-crds
+    repoURL: cr.agentgateway.dev/charts
+    targetRevision: v1.4.1
+  syncPolicy:
+    automated:
+      # Supprime du cluster les ressources retirées de la source git
+      prune: true
+      # Corrige les dérives faites directement dans le cluster
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    # Les CRDs dépassent souvent la limite du client-side apply
+    - ServerSideApply=true

@@ -1,0 +1,45 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: bootstrap
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  syncPolicy:
+    # Si un dossier sous base/ disparaît, on supprime l'Application mais pas
+    # les workloads qu'elle gère. Garde-fou sur un ApplicationSet de bootstrap.
+    preserveResourcesOnDeletion: true
+  generators:
+  - git:
+      repoURL: https://github.com/EvannDev/agentgateway101.git
+      revision: main
+      directories:
+      - path: base/*
+  template:
+    metadata:
+      name: '{{.path.basename | normalize}}'
+      labels:
+        app.kubernetes.io/part-of: bootstrap
+      finalizers:
+      # Suppression en cascade : supprimer l'Application supprime ses ressources.
+      - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: platform
+      source:
+        repoURL: https://github.com/EvannDev/agentgateway101.git
+        targetRevision: main
+        path: '{{.path.path}}'
+      destination:
+        server: https://kubernetes.default.svc
+        # Ces Applications ne contiennent que des Application CR, qui vivent
+        # dans argocd. Les namespaces applicatifs sont créés par les enfants.
+        namespace: argocd
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+        # Indispensable dès qu'il y a des CRDs volumineux (limite de 262 kB de
+        # l'annotation last-applied-configuration en client-side apply).
+        - ServerSideApply=true
