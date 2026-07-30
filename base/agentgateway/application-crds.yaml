@@ -6,7 +6,7 @@ metadata:
   annotations:
     # Wave négative : les CRDs sont synchronisées avant tout autre composant
     # agentgateway ajouté dans ce dossier (contrôleur, gateway, policies...).
-    argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/sync-wave: "-50"
   # Pas de resources-finalizer ici volontairement : supprimer cette Application
   # ne doit pas supprimer les CRDs (et donc toutes les CR associées).
 spec:
