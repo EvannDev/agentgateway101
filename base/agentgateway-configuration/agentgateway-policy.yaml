@@ -1,0 +1,16 @@
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: rbac-policy
+  namespace: agentgateway-system
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: google
+  traffic: 
+    authorization: 
+      action: Allow
+      policy: 
+        matchExpressions:
+          - "request.headers['x-llm'] == 'gemini'"
