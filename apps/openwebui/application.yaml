@@ -9,7 +9,7 @@ spec:
     server: https://kubernetes.default.svc
   project: platform
   source:
-    chart: openwebui
+    chart: open-webui
     repoURL: https://open-webui.github.io/helm-charts
     targetRevision: 15.2.1
   syncPolicy:
