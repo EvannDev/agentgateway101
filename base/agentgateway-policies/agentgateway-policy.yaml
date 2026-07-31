@@ -36,6 +36,7 @@ spec:
             action: Reject
           response:
             message: "Request contains PII and cannot be processed"
+            statusCode: 403
         - webhook:
             backendRef:
               group: ""
