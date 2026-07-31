@@ -48,6 +48,7 @@ sont suivis. Il faut donc créer les Secrets à la main après le bootstrap.
 | `anthropic-secret` | `Authorization` | `AgentgatewayBackend/anthropic` (`policies.auth.secretRef`) |
 | `google-secret` | `Authorization` | `AgentgatewayBackend/google` |
 | `argocd-mcp-secret` | `token` | `Deployment/argocd-mcp` (env `ARGOCD_API_TOKEN`) |
+| `mcp-inspector-secret` | `token` | `Deployment/mcp-inspector` (env `MCP_INSPECTOR_API_TOKEN`) |
 
 ### 2.1 Clés des fournisseurs LLM
 
@@ -98,6 +99,20 @@ deux couches expriment la même politique. Pour autoriser `sync_application` plu
 tard, il faudra élargir **les deux** — le RBAC du compte Argo CD et la variable
 d'environnement du conteneur.
 
+### 2.3 Token de MCP Inspector
+
+L'Inspector génère un token au démarrage et l'écrit dans ses logs. On lui en
+impose un fixe pour qu'il survive aux redémarrages du pod.
+
+```bash
+export MCP_INSPECTOR_API_TOKEN=$(openssl rand -hex 32)
+echo "Token : $MCP_INSPECTOR_API_TOKEN"    # à conserver, il sert dans l'URL
+
+envsubst < base/agentgateway-configuration/mcp-inspector-apikey.yaml.example \
+  > base/agentgateway-configuration/mcp-inspector-apikey.yaml
+kubectl apply -f base/agentgateway-configuration/mcp-inspector-apikey.yaml
+```
+
 ---
 
 ## 3. Actions manuelles optionnelles
@@ -146,7 +161,51 @@ statique au format OpenAI.
 
 ---
 
-## 5. Structure du dépôt
+## 5. MCP Inspector (debug)
+
+> **Outil de développement, volontairement non exposé.** Son backend peut lancer
+> des processus — [CVE-2025-49596](https://github.com/advisories/GHSA-7f8r-222p-6f5g)
+> (CVSS 9.4) permettait une RCE non authentifiée avant la 0.14.1. Le Service est
+> donc en `ClusterIP`, sans `HTTPRoute` ni `LoadBalancer`, et l'authentification
+> par token reste active. Ne jamais ajouter `DANGEROUSLY_OMIT_AUTH`.
+
+### 5.1 En cluster (déployé par Argo CD)
+
+```bash
+kubectl port-forward -n agentgateway-system svc/mcp-inspector 6274:6274
+```
+
+Puis ouvrir `http://localhost:6274?MCP_INSPECTOR_API_TOKEN=<le-token-du-§2.3>`.
+
+Dans l'UI : transport **Streamable HTTP**, URL du serveur à tester. L'Inspector
+tournant dans le cluster, il joint les Services par leur DNS interne :
+
+| Cible | URL |
+|---|---|
+| Le serveur MCP Argo CD en direct | `http://argocd-mcp.agentgateway-system.svc:3000/mcp` |
+| À travers la passerelle | `http://agentgateway-proxy.agentgateway-system.svc/mcp` |
+
+Comparer les deux est le meilleur moyen de vérifier qu'une policy d'autorisation
+filtre bien : la liste d'outils doit être plus courte via la passerelle.
+
+### 5.2 En local, sans rien déployer
+
+Alternative plus sûre pour une démo ponctuelle :
+
+```bash
+kubectl port-forward -n agentgateway-system svc/agentgateway-proxy 8081:80
+npx @modelcontextprotocol/inspector      # écoute sur localhost:6274
+# Dans l'UI : Streamable HTTP -> http://localhost:8081/mcp
+```
+
+**Limite connue :** l'Inspector ouvre un second port dynamique pour le bac à
+sable « MCP Apps » (35701 lors de mes tests). Il n'est pas couvert par le
+port-forward du §5.1 — les outils classiques fonctionnent, les ressources d'UI
+MCP Apps non.
+
+---
+
+## 6. Structure du dépôt
 
 ```
 appset.yaml                            2 ApplicationSets : bootstrap (base/*) et apps (apps/*)
@@ -154,7 +213,8 @@ project.yaml                           AppProject "platform"
 
 base/agentgateway/                     Application CR des CRDs (wave -50) et du contrôleur
                                        (wave -40), plus le Gateway
-base/agentgateway-configuration/       Backends LLM, HTTPRoute, policies, serveur MCP Argo CD
+base/agentgateway-configuration/       Backends LLM, HTTPRoute, policies, serveur MCP Argo CD,
+                                       MCP Inspector (outil de debug, non exposé)
 apps/openwebui/                        Application CR d'Open WebUI
 ```
 
@@ -164,7 +224,7 @@ webhook GitHub).
 
 ---
 
-## 6. Vérifications
+## 7. Vérifications
 
 ```bash
 # GitOps

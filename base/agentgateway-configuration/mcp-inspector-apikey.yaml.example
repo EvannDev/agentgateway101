@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mcp-inspector-secret
+  namespace: agentgateway-system
+type: Opaque
+stringData:
+  token: $MCP_INSPECTOR_API_TOKEN
