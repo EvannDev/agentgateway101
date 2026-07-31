@@ -12,6 +12,10 @@ spec:
     chart: open-webui
     repoURL: https://open-webui.github.io/helm-charts
     targetRevision: 15.2.1
+  helm:
+    parameters:
+    - name: ollama.enabled
+      value: false
   syncPolicy:
     automated:
       # Prune resources during auto-syncing (default is false)
