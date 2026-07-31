@@ -36,6 +36,32 @@ spec:
             - CaSin
             - PhoneNumber
             action: Mask
+        - regex:
+            action: Mask
+            matches:
+            - "\\bAKIA[0-9A-Z]{16}\\b"
+            - "\\bsk-[a-zA-Z0-9_-]{20,}\\b"
+            - "\\beyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\b"
+            - "-----BEGIN\\s+(RSA\\s+|EC\\s+|DSA\\s+|OPENSSH\\s+)?PRIVATE KEY-----"
+            - "(?i)(bearer|authorization)[:\\s]+[A-Za-z0-9\\-._~+/]{20,}=*"
+            - "(?i)(mongodb|postgres|postgresql|mysql|redis|amqp|mssql)://[^\\s\"'<>]{10,}"
+            - "(?i)(password|passwd|pwd|secret|token|api[_-]?key)\\s*[=:]\\s*[\"']?[^\\s\"']{8,}"
+            - "(?i)(my|the|your|his|her|our|their)\\s+(password|passwd|secret|passcode|pin|token)\\s+(is|was|=|:)\\s+\\S{4,}"
+        - regex:
+            action: Mask
+            matches:
+            - "(?i)(how to|instructions for|guide to|steps to|recipe for|teach me to)\\s+(make|build|create|construct|assemble|synthesiz(e|ing)|manufactur(e|ing))\\s+(a |an )?(bomb|explosive|detonator|IED|pipe bomb|chemical weapon|biological weapon|dirty bomb|napalm|nerve agent|ricin|sarin)"
+            - "(?i)(how to|instructions for|teach me to)\\s+(make|synthesiz(e|ing)|cook(ing)?|produc(e|ing)|manufactur(e|ing))\\s+(methamphetamine|meth|cocaine|heroin|fentanyl|LSD|MDMA|crack|crystal meth)"
+            - "(?i)(how to|guide to|teach me to|steps to)\\s+(hack|exploit|crack|breach|compromise|break)\\s+(into\\s+)?(a |an |the )?(server|website|network|system|database|account|email|wifi|password|firewall|bank)"
+            - "(?i)(write|create|generate|give me|provide)\\s+(a |an |me )?(exploit|payload|malware|ransomware|keylogger|trojan|rootkit|backdoor|shellcode|reverse shell|botnet|spyware|worm|virus)"
+            - "(?i)(write|create|generate|draft)\\s+(a |an |me )?(phishing|spear-?phishing|social engineering|scam|fraudulent)\\s+(email|message|template|letter|page|website|login)"
+        - regex:
+            action: Mask
+            matches:
+            - "(?i)(how to|ways to|methods?\\s+(for|of|to))\\s+(kill(ing)? yourself|commit(ting)? suicide|end(ing)? (my|your|one's) life|self-?harm(ing)?|cut(ting)? yourself|hurt(ing)? yourself|overdos(e|ing) on)"
+            - "(?i)(kill all|exterminate all|genocide|ethnic cleansing|racial superiority|death to all|gas the)\\s+[a-zA-Z]"
+            - "(?i)(should i|advise me to|recommend me to)\\s+(buy|sell|invest in|short|trade)\\s+(stocks?|shares?|crypto|bitcoin|ethereum|options?|bonds?|securities)"
+            - "(?i)(should i|can i|is it safe to)\\s+(take|stop taking|increase|decrease|combine|mix)\\s+(my\\s+)?(medication|medicine|prescription|dosage|pills?|insulin|antidepressant|antibiotic)"
         response:
         - regex:
             builtins:
