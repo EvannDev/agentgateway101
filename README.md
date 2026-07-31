@@ -48,7 +48,6 @@ sont suivis. Il faut donc créer les Secrets à la main après le bootstrap.
 | `anthropic-secret` | `Authorization` | `AgentgatewayBackend/anthropic` (`policies.auth.secretRef`) |
 | `google-secret` | `Authorization` | `AgentgatewayBackend/google` |
 | `argocd-mcp-secret` | `token` | `Deployment/argocd-mcp` (env `ARGOCD_API_TOKEN`) |
-| `mcp-inspector-secret` | `token` | `Deployment/mcp-inspector` (env `MCP_INSPECTOR_API_TOKEN`) |
 
 ### 2.1 Clés des fournisseurs LLM
 
@@ -98,20 +97,6 @@ kubectl apply -f base/agentgateway-configuration/argocd-mcp-apikey.yaml
 deux couches expriment la même politique. Pour autoriser `sync_application` plus
 tard, il faudra élargir **les deux** — le RBAC du compte Argo CD et la variable
 d'environnement du conteneur.
-
-### 2.3 Token de MCP Inspector
-
-L'Inspector génère un token au démarrage et l'écrit dans ses logs. On lui en
-impose un fixe pour qu'il survive aux redémarrages du pod.
-
-```bash
-export MCP_INSPECTOR_API_TOKEN=$(openssl rand -hex 32)
-echo "Token : $MCP_INSPECTOR_API_TOKEN"    # à conserver, il sert dans l'URL
-
-envsubst < base/agentgateway-configuration/mcp-inspector-apikey.yaml.example \
-  > base/agentgateway-configuration/mcp-inspector-apikey.yaml
-kubectl apply -f base/agentgateway-configuration/mcp-inspector-apikey.yaml
-```
 
 ---
 
@@ -186,17 +171,17 @@ Dans l'UI : transport **Streamable HTTP**, puis l'une de ces cibles :
 Comparer les deux est le meilleur moyen de vérifier qu'une policy d'autorisation
 filtre bien : la liste d'outils doit être plus courte via la passerelle.
 
-### 5.2 En cluster — actuellement inutilisable (bug amont)
+### 5.2 Pourquoi il n'est pas déployé en cluster (bug amont)
 
-Le `Deployment/mcp-inspector` démarre correctement et écrit bien
-`/home/node/.mcp-inspector/mcp.json`, mais **l'UI n'affiche aucun serveur** :
-`GET /api/servers` renvoie 500 avec
+Un déploiement en cluster a été tenté puis retiré du dépôt. Le pod démarrait et
+écrivait bien `/home/node/.mcp-inspector/mcp.json`, mais **l'UI n'affichait aucun
+serveur** : `GET /api/servers` renvoyait 500 avec
 `Couldn't access platform storage: PermissionDenied`.
 
 En 2.0.0 l'Inspector lit sa liste via un trousseau système, absent d'un conteneur,
 et la dégradation prévue ne s'engage pas. Reproduit dans un conteneur **sans aucun
-durcissement** — ce n'est pas lié au `readOnlyRootFilesystem` ni au `fsGroup` du
-manifeste. Suivi en amont :
+durcissement** — ce n'était donc pas lié au `readOnlyRootFilesystem` ni au
+`fsGroup` du manifeste. Suivi en amont :
 
 - [#1845](https://github.com/modelcontextprotocol/inspector/issues/1845) — le symptôme
 - [#1848](https://github.com/modelcontextprotocol/inspector/issues/1848) — la cause (`KeyringSecretStore`) et le correctif proposé
@@ -220,8 +205,8 @@ project.yaml                           AppProject "platform"
 
 base/agentgateway/                     Application CR des CRDs (wave -50) et du contrôleur
                                        (wave -40), plus le Gateway
-base/agentgateway-configuration/       Backends LLM, HTTPRoute, policies, serveur MCP Argo CD,
-                                       MCP Inspector (outil de debug, non exposé)
+base/agentgateway-configuration/       Backends LLM et MCP, HTTPRoutes, policies,
+                                       serveur MCP Argo CD
 apps/openwebui/                        Application CR d'Open WebUI
 ```
 

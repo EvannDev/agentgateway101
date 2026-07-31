@@ -48,3 +48,4 @@ spec:
       namespace: agentgateway-system
       group: agentgateway.dev
       kind: AgentgatewayBackend
+      weight: 1
