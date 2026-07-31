@@ -12,3 +12,8 @@ spec:
     allowedRoutes:
       namespaces:
         from: All
+      kinds:
+      - group: agentgateway.dev
+        kind: AgentgatewayModel
+      - group: gateway.networking.k8s.io
+        kind: HTTPRoute
