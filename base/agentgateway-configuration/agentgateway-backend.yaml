@@ -27,3 +27,11 @@ spec:
     auth:
       secretRef:
         name: anthropic-secret
+    ai:
+      routes:
+        "/v1/chat/completions": Completions
+        "/v1/models": Models          # sinon dropdown vide dans Open WebUI
+      # Bonus : des noms lisibles dans l'UI plutôt que des IDs bruts
+      modelAliases:
+        fast: claude-haiku-4-5
+        smart: claude-opus-5

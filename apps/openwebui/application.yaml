@@ -13,9 +13,12 @@ spec:
     repoURL: https://open-webui.github.io/helm-charts
     targetRevision: 15.2.1
     helm:
-      parameters:
-      - name: ollama.enabled
-        value: "false"
+      valuesObject:
+        ollama:
+          enabled: false
+        pipeline:
+          enabled: false
+        openaiBaseApiUrl: http://agentgateway-proxy.agentgateway-system.svc.cluster.local/v1
   syncPolicy:
     automated:
       # Prune resources during auto-syncing (default is false)
