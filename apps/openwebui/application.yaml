@@ -15,7 +15,7 @@ spec:
     helm:
       parameters:
       - name: ollama.enabled
-        value: false
+        value: "false"
   syncPolicy:
     automated:
       # Prune resources during auto-syncing (default is false)
