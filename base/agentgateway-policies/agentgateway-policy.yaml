@@ -29,13 +29,15 @@ spec:
       promptGuard:
         request:
         - webhook:
-            backendRef: 
+            backendRef:
+              group: ""
               kind: Service
               name: ai-guardrail-webhook
               port: 8000
         response:
         - webhook:
             backendRef: 
+              group: ""
               kind: Service
               name: ai-guardrail-webhook
               port: 8000
