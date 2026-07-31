@@ -31,6 +31,11 @@ spec:
         runAsNonRoot: true
         runAsUser: 1000
         runAsGroup: 1000
+        # Indispensable : sans fsGroup, kubelet monte les emptyDir en root:root et
+        # le conteneur non-root ne peut pas y écrire. C'est ce qui provoque
+        # "ENOENT ... mkdir '/home/node/.mcp-inspector'" (le vrai code est EROFS
+        # ou EACCES selon le cas).
+        fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -75,11 +80,20 @@ spec:
           limits:
             memory: 512Mi
         volumeMounts:
-        # Requis par readOnlyRootFilesystem (démarrage vérifié avec cette config).
+        # Requis par readOnlyRootFilesystem.
         - name: tmp
           mountPath: /tmp
+        # L'Inspector persiste la liste des serveurs dans $HOME/.mcp-inspector.
+        # Monter le sous-dossier précis, et non /home/node en entier : un montage
+        # sur le HOME empêche la création de sous-dossiers par l'utilisateur node.
+        # Contrepartie de l'emptyDir : la liste est perdue à chaque redémarrage
+        # du pod. Remplacer par un PVC si tu veux qu'elle survive.
+        - name: config
+          mountPath: /home/node/.mcp-inspector
       volumes:
       - name: tmp
+        emptyDir: {}
+      - name: config
         emptyDir: {}
 ---
 apiVersion: v1

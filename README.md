@@ -188,6 +188,10 @@ tournant dans le cluster, il joint les Services par leur DNS interne :
 Comparer les deux est le meilleur moyen de vérifier qu'une policy d'autorisation
 filtre bien : la liste d'outils doit être plus courte via la passerelle.
 
+**La liste des serveurs est stockée dans un `emptyDir`** (`/home/node/.mcp-inspector`)
+et disparaît donc à chaque redémarrage du pod : il faut les ressaisir. Pour qu'elle
+survive, remplacer le volume `config` par un PVC dans `mcp-inspector.yaml`.
+
 ### 5.2 En local, sans rien déployer
 
 Alternative plus sûre pour une démo ponctuelle :
