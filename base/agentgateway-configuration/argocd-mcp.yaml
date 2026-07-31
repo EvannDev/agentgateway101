@@ -28,7 +28,13 @@ spec:
         image: quay.io/argoprojlabs/mcp-for-argocd:v0.8.0
         # Transport HTTP stream : écoute POST /mcp sur le port 3000.
         # Correspond au défaut d'agentgateway pour protocol: StreamableHTTP.
-        args: ["http", "--stateless"]
+        #
+        # `args` remplace la TOTALITÉ du CMD de l'image (["node","dist/index.js",
+        # "http"]), il faut donc le réécrire en entier. L'ENTRYPOINT
+        # docker-entrypoint.sh ne préfixe `node` que si le 1er argument n'est pas
+        # une commande connue : avec args: ["http","--stateless"] il produit
+        # `node http` → "Cannot find module '/app/http'".
+        args: ["node", "dist/index.js", "http", "--stateless"]
         ports:
         - name: mcp
           containerPort: 3000
