@@ -8,10 +8,17 @@ spec:
     # Correspond à --stateless sur le Deployment argocd-mcp : pas d'affinité de
     # session, donc le serveur MCP peut monter en replicas.
     sessionRouting: Stateless
-    # prefixMode non défini = Conditional : avec un seul target les noms d'outils
-    # restent nus, ce qui rend la liste directement comparable à celle obtenue en
-    # attaquant argocd-mcp sans passer par la passerelle. Passer à Always dès
-    # qu'un second target est ajouté, pour éviter les collisions de noms.
+    # Les noms d'outils sont exposés en {target}_{nom}, par ex.
+    # argocd_list_applications, github_get_me. En Conditional (le défaut) le
+    # préfixage n'apparaîtrait qu'à partir du 2e target, ce qui renommerait tous
+    # les outils d'un coup et casserait les règles CEL `mcp.tool.name`.
+    # Always rend le nommage stable quel que soit le nombre de targets.
+    # Contrainte : un nom de target ne peut pas contenir d'underscore.
+    prefixMode: Always
+    # Avec plusieurs targets, FailClosed (le défaut) ferait échouer TOUTE la
+    # session si un seul serveur est indisponible — ici une panne de l'API GitHub
+    # couperait aussi Argo CD. FailOpen ignore le target en échec.
+    failureMode: FailOpen
     targets:
     - name: argocd
       static:
@@ -22,6 +29,28 @@ spec:
         port: 3000
         path: /mcp
         protocol: StreamableHTTP
+
+    # Serveur MCP GitHub hébergé par GitHub. Le serveur auto-hébergé
+    # (ghcr.io/github/github-mcp-server) est en stdio uniquement : il ne peut pas
+    # être un target agentgateway, qui exige SSE ou StreamableHTTP.
+    - name: github
+      static:
+        host: api.githubcopilot.com
+        port: 443
+        path: /mcp/
+        protocol: StreamableHTTP
+        policies:
+          # tls: {} suffit — TLS est initié avec les CA système et le SNI est
+          # déduit de la destination.
+          tls: {}
+          # Auth propre à ce target : elle écrase celle du backend. Ordre de
+          # fusion documenté dans le CRD :
+          #   AgentgatewayPolicy < AgentgatewayBackend < target MCP (ici).
+          # La valeur est lue dans la clé `Authorization` du Secret et envoyée
+          # en `Authorization: Bearer <valeur>`, ce qu'attend GitHub.
+          auth:
+            secretRef:
+              name: github-mcp-secret
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute

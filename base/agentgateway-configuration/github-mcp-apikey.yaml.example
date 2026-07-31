@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-mcp-secret
+  namespace: agentgateway-system
+type: Opaque
+stringData:
+  # PAT GitHub brut, sans préfixe "Bearer " : agentgateway l'ajoute lui-même.
+  Authorization: $GITHUB_MCP_PAT

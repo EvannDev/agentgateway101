@@ -48,6 +48,7 @@ sont suivis. Il faut donc créer les Secrets à la main après le bootstrap.
 | `anthropic-secret` | `Authorization` | `AgentgatewayBackend/anthropic` (`policies.auth.secretRef`) |
 | `google-secret` | `Authorization` | `AgentgatewayBackend/google` |
 | `argocd-mcp-secret` | `token` | `Deployment/argocd-mcp` (env `ARGOCD_API_TOKEN`) |
+| `github-mcp-secret` | `Authorization` | `AgentgatewayBackend/mcp-tools`, target `github` (`static.policies.auth`) |
 
 ### 2.1 Clés des fournisseurs LLM
 
@@ -97,6 +98,32 @@ kubectl apply -f base/agentgateway-configuration/argocd-mcp-apikey.yaml
 deux couches expriment la même politique. Pour autoriser `sync_application` plus
 tard, il faudra élargir **les deux** — le RBAC du compte Argo CD et la variable
 d'environnement du conteneur.
+
+### 2.3 PAT GitHub pour le serveur MCP GitHub
+
+Le target `github` du backend `mcp-tools` pointe sur le serveur MCP **hébergé par
+GitHub** (`https://api.githubcopilot.com/mcp/`). Le serveur auto-hébergé
+`ghcr.io/github/github-mcp-server` n'est pas utilisable ici : il ne parle que
+stdio, alors qu'un target agentgateway exige `SSE` ou `StreamableHTTP`.
+
+Créer un PAT sur https://github.com/settings/personal-access-tokens — de
+préférence *fine-grained*, limité aux dépôts concernés, en lecture seule pour
+commencer. Le jeu d'outils du serveur distant est large : donner le minimum.
+
+```bash
+export GITHUB_MCP_PAT='github_pat_...'
+envsubst < base/agentgateway-configuration/github-mcp-apikey.yaml.example \
+  > base/agentgateway-configuration/github-mcp-apikey.yaml
+kubectl apply -f base/agentgateway-configuration/github-mcp-apikey.yaml
+```
+
+Le PAT est stocké **brut**, sans préfixe `Bearer ` : agentgateway lit la clé
+`Authorization` du Secret et émet `Authorization: Bearer <valeur>`.
+
+Le pod du Gateway doit pouvoir sortir vers `api.githubcopilot.com:443`. Si tu
+restreins l'egress plus tard (NetworkPolicy, ou networking `limited` sur
+l'environnement), il faut autoriser ce domaine explicitement — sinon l'appel
+échoue en silence.
 
 ---
 
@@ -170,6 +197,12 @@ Dans l'UI : transport **Streamable HTTP**, puis l'une de ces cibles :
 
 Comparer les deux est le meilleur moyen de vérifier qu'une policy d'autorisation
 filtre bien : la liste d'outils doit être plus courte via la passerelle.
+
+**Les noms d'outils diffèrent entre les deux vues.** Le backend est en
+`prefixMode: Always`, donc la passerelle expose `argocd_list_applications` et
+`github_get_me` là où le serveur attaqué en direct annonce `list_applications`.
+C'est voulu : le nommage reste stable quand on ajoute ou retire un target. Toute
+règle CEL `mcp.tool.name` doit utiliser la forme préfixée.
 
 ### 5.2 Pourquoi il n'est pas déployé en cluster (bug amont)
 
