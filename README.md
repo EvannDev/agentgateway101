@@ -120,6 +120,15 @@ kubectl apply -f base/agentgateway-configuration/github-mcp-apikey.yaml
 Le PAT est stocké **brut**, sans préfixe `Bearer ` : agentgateway lit la clé
 `Authorization` du Secret et émet `Authorization: Bearer <valeur>`.
 
+> **Créer le Secret AVANT d'appliquer le backend.** Un `secretRef` non résolu met
+> l'`AgentgatewayBackend` en `Accepted=False (TranslationError)` — le backend
+> **entier** est rejeté, pas seulement le target concerné. La route `/mcp` perd sa
+> destination et répond `500 service not found`, Argo CD compris. `failureMode:
+> FailOpen` ne protège pas de ça : il couvre les défaillances à l'exécution d'un
+> target, pas une erreur de traduction de la configuration.
+>
+> Diagnostic : `kubectl get agentgatewaybackend mcp-tools -n agentgateway-system -o jsonpath='{.status.conditions[*].message}'`
+
 Le pod du Gateway doit pouvoir sortir vers `api.githubcopilot.com:443`. Si tu
 restreins l'egress plus tard (NetworkPolicy, ou networking `limited` sur
 l'environnement), il faut autoriser ce domaine explicitement — sinon l'appel
