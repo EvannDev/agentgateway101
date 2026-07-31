@@ -20,6 +20,9 @@ spec:
             acceptClients: true
             auth:
               existingSecretName: newt-main-tunnel-auth
+            service:
+              type: ClusterIP
+              enabled: false
   syncPolicy:
     automated:
       # Prune resources during auto-syncing (default is false)

@@ -156,6 +156,52 @@ kubectl patch cm argocd-cm -n argocd --type merge -p '{"data":{"resource.customi
 Sans ce patch, tout finit par converger, mais la première sync affiche une app en
 erreur — gênant pendant une démo.
 
+### 3.2 SSO GitHub via Dex (Argo CD)
+
+Entièrement manuel : `argocd-cm` n'est pas géré par ce dépôt.
+
+**Trois valeurs doivent être identiques, protocole compris**, sinon Argo CD refuse
+la redirection avec *« Invalid redirect URL: the protocol and host (including
+port) must match »* :
+
+1. `url` dans `argocd-cm`
+2. `connectors[].config.redirectURI` dans `dex.config` (= `<url>/api/dex/callback`)
+3. l'*Authorization callback URL* de l'OAuth App GitHub — **hors cluster**
+
+```bash
+kubectl patch cm argocd-cm -n argocd --type merge \
+  -p '{"data":{"url":"https://argocd.evann-deb.fr"}}'
+
+kubectl edit cm argocd-cm -n argocd     # redirectURI -> https://.../api/dex/callback
+
+# Dex ne relit pas sa configuration à chaud
+kubectl rollout restart deploy/argocd-dex-server -n argocd
+```
+
+**Le piège rencontré :** `url` était en `http://` alors que `argocd-server` sert en
+TLS (`server.insecure` non activé) et renvoie un **307 vers `https://`**.
+L'origine du navigateur devenait donc `https://` — protocole différent de `url`,
+et la comparaison échoue. Vérification :
+
+```bash
+curl -sS -I http://argocd.evann-deb.fr | head -3   # doit-il rediriger ?
+kubectl get cm argocd-cm -n argocd -o jsonpath='{.data.url}'
+```
+
+Le certificat servi est celui d'Argo CD (`issuer= /O=Argo CD`, auto-signé) : rien
+ne termine TLS en amont, l'exposition Tailscale fait du passthrough TCP. D'où
+l'avertissement du navigateur. Pour l'éliminer, terminer TLS côté Tailscale et
+activer `server.insecure: "true"` dans `argocd-cmd-params-cm`.
+
+Pour conserver un accès par port-forward en parallèle, ajouter les origines
+supplémentaires plutôt que de changer `url` :
+
+```yaml
+data:
+  additionalUrls: |
+    - https://localhost:8080
+```
+
 ---
 
 ## 4. Problèmes connus et contournements manuels
