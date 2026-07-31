@@ -169,43 +169,46 @@ statique au format OpenAI.
 > donc en `ClusterIP`, sans `HTTPRoute` ni `LoadBalancer`, et l'authentification
 > par token reste active. Ne jamais ajouter `DANGEROUSLY_OMIT_AUTH`.
 
-### 5.1 En cluster (déployé par Argo CD)
-
-```bash
-kubectl port-forward -n agentgateway-system svc/mcp-inspector 6274:6274
-```
-
-Puis ouvrir `http://localhost:6274?MCP_INSPECTOR_API_TOKEN=<le-token-du-§2.3>`.
-
-Dans l'UI : transport **Streamable HTTP**, URL du serveur à tester. L'Inspector
-tournant dans le cluster, il joint les Services par leur DNS interne :
-
-| Cible | URL |
-|---|---|
-| Le serveur MCP Argo CD en direct | `http://argocd-mcp.agentgateway-system.svc:3000/mcp` |
-| À travers la passerelle | `http://agentgateway-proxy.agentgateway-system.svc/mcp` |
-
-Comparer les deux est le meilleur moyen de vérifier qu'une policy d'autorisation
-filtre bien : la liste d'outils doit être plus courte via la passerelle.
-
-**La liste des serveurs est stockée dans un `emptyDir`** (`/home/node/.mcp-inspector`)
-et disparaît donc à chaque redémarrage du pod : il faut les ressaisir. Pour qu'elle
-survive, remplacer le volume `config` par un PVC dans `mcp-inspector.yaml`.
-
-### 5.2 En local, sans rien déployer
-
-Alternative plus sûre pour une démo ponctuelle :
+### 5.1 En local (méthode recommandée)
 
 ```bash
 kubectl port-forward -n agentgateway-system svc/agentgateway-proxy 8081:80
 npx @modelcontextprotocol/inspector      # écoute sur localhost:6274
-# Dans l'UI : Streamable HTTP -> http://localhost:8081/mcp
 ```
 
-**Limite connue :** l'Inspector ouvre un second port dynamique pour le bac à
-sable « MCP Apps » (35701 lors de mes tests). Il n'est pas couvert par le
-port-forward du §5.1 — les outils classiques fonctionnent, les ressources d'UI
-MCP Apps non.
+Dans l'UI : transport **Streamable HTTP**, puis l'une de ces cibles :
+
+| Cible | URL (via le port-forward) |
+|---|---|
+| À travers la passerelle | `http://localhost:8081/mcp` |
+| Le serveur MCP Argo CD en direct | port-forward séparé sur `svc/argocd-mcp 3000:3000`, puis `http://localhost:3000/mcp` |
+
+Comparer les deux est le meilleur moyen de vérifier qu'une policy d'autorisation
+filtre bien : la liste d'outils doit être plus courte via la passerelle.
+
+### 5.2 En cluster — actuellement inutilisable (bug amont)
+
+Le `Deployment/mcp-inspector` démarre correctement et écrit bien
+`/home/node/.mcp-inspector/mcp.json`, mais **l'UI n'affiche aucun serveur** :
+`GET /api/servers` renvoie 500 avec
+`Couldn't access platform storage: PermissionDenied`.
+
+En 2.0.0 l'Inspector lit sa liste via un trousseau système, absent d'un conteneur,
+et la dégradation prévue ne s'engage pas. Reproduit dans un conteneur **sans aucun
+durcissement** — ce n'est pas lié au `readOnlyRootFilesystem` ni au `fsGroup` du
+manifeste. Suivi en amont :
+
+- [#1845](https://github.com/modelcontextprotocol/inspector/issues/1845) — le symptôme
+- [#1848](https://github.com/modelcontextprotocol/inspector/issues/1848) — la cause (`KeyringSecretStore`) et le correctif proposé
+- [#1858](https://github.com/modelcontextprotocol/inspector/issues/1858) — v2 se bloque silencieusement en `streamable-http`
+
+En attendant un correctif : rester sur le §5.1. Si la 2.x se bloque aussi en local,
+épingler la dernière 1.x (`npx @modelcontextprotocol/inspector@1.0.1`) — elle ne
+persiste pas de catalogue, on saisit l'URL à chaque session.
+
+**Autre limite :** l'Inspector ouvre un second port dynamique pour le bac à sable
+« MCP Apps » (35701 et 45857 selon les essais), non couvert par un port-forward.
+Les outils classiques fonctionnent, les ressources d'UI MCP Apps non.
 
 ---
 
