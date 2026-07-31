@@ -28,6 +28,14 @@ spec:
     ai:
       promptGuard:
         request:
+        - regex:
+            builtins:
+            - Ssn
+            - CreditCard
+            - Email
+            action: Reject
+          response:
+            message: "Request contains PII and cannot be processed"
         - webhook:
             backendRef:
               group: ""
