@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: apikey
+  namespace: agentgateway-system
+  labels:
+    foo: bar
+data:
+  api-key: |
+    {
+      "keyHash": "sha256:ec831936fbbab1232344d9da271d1629fabc992aef393d7d54735b210d4ff166",
+      "metadata": {
+        "group": "ai-team"
+      }
+    }
