@@ -30,7 +30,10 @@ spec:
     ai:
       routes:
         "/v1/chat/completions": Completions
-        "/v1/models": Models
+        # `Models` est refusé par le data plane en v1.4.1 (501 "Route 'Models'
+        # not implemented"). `Passthrough` relaie la requête telle quelle et
+        # renvoie la liste de modèles de l'upstream.
+        "/v1/models": Passthrough
 ---
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayBackend
@@ -48,4 +51,4 @@ spec:
     ai:
       routes:
         "/v1/chat/completions": Completions
-        "/v1/models": Models
+        "/v1/models": Passthrough
