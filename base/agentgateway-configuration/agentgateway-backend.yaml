@@ -45,3 +45,7 @@ spec:
     auth:
       secretRef:
         name: openai-secret
+    ai:
+      routes:
+        "/v1/chat/completions": Completions
+        "/v1/models": Models
