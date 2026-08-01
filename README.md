@@ -206,25 +206,55 @@ data:
 
 ## 4. Problèmes connus et contournements manuels
 
-### 4.1 Open WebUI n'affiche aucun modèle
+### 4.1 Open WebUI n'affiche aucun modèle — *résolu*
 
-`GET /v1/models` à travers la passerelle renvoie :
+`GET /v1/models` renvoyait `{"error":"Route 'Models' not implemented"}`.
 
+Le type de route `Models` est accepté par le CRD mais **absent du data plane**
+en v1.4.1 — pour *tous* les providers, pas seulement Anthropic. Le contournement
+est `Passthrough`, qui relaie la requête telle quelle et retourne la liste de
+modèles de l'upstream :
+
+```yaml
+policies:
+  ai:
+    routes:
+      "/v1/chat/completions": Completions
+      "/v1/models": Passthrough
 ```
-{"error":"Route 'Models' not implemented"}
-```
 
-Le type de route `Models` existe dans l'API agentgateway mais n'est **pas
-implémenté pour le provider Anthropic** en v1.4.1. Ajouter
-`policies.ai.routes: {"/v1/models": Models}` au backend ne change rien.
+Suivi upstream : [agentgateway#1462](https://github.com/agentgateway/agentgateway/issues/1462).
 
-**Contournement manuel** (stocké en base Open WebUI, donc hors GitOps) :
-*Admin Settings → Connections →* sur la connexion OpenAI, renseigner le champ
-*Model IDs* avec les identifiants à exposer.
+Plus aucun contournement manuel : le champ *Model IDs* dans *Admin Settings →
+Connections* doit rester **vide**, sinon il fige la liste et masque le
+`/v1/models` dynamique.
 
-**Solution GitOps** (pas encore appliquée) : une `HTTPRoute` en `Exact: /v1/models`
-plus une `AgentgatewayPolicy` avec `traffic.directResponse` renvoyant une liste
-statique au format OpenAI.
+### 4.2 Afficher OpenAI *et* Anthropic dans le même sélecteur
+
+agentgateway ne sait pas fusionner `/v1/models` entre plusieurs backends
+([agentgateway#1462](https://github.com/agentgateway/agentgateway/issues/1462),
+[kgateway#13251](https://github.com/kgateway-dev/kgateway/issues/13251)). On
+expose donc un préfixe par provider et on laisse Open WebUI faire la fusion :
+
+| Provider  | URL à travers la passerelle |
+| --------- | --------------------------- |
+| OpenAI    | `/openai/v1` (et `/v1`, catch-all par défaut) |
+| Anthropic | `/anthropic/v1`             |
+
+Chaque `HTTPRoute` porte un filtre `URLRewrite` qui retire le préfixe, si bien
+que le backend reçoit un `/v1/...` standard. Côté Open WebUI, `openaiBaseApiUrls`
+liste les deux URLs et `openaiApiKeys` autant de clés factices — l'authentification
+réelle est injectée par la passerelle depuis les Secrets.
+
+Anthropic répond à `/v1/models` dans son format natif (`data[].id`,
+`display_name`) et non au format OpenAI. Open WebUI le tolère : il ne lit que
+`data[].id`. Seul effet visible, les modèles s'affichent `claude-opus-5` plutôt
+que « Claude Opus 5 », faute de champ `name`.
+
+> **Piège :** ne pas renseigner `model:` dans le backend Anthropic. Ce champ
+> **écrase** le modèle demandé par le client — la liste complète s'affiche mais
+> chaque sélection retombe silencieusement sur le modèle épinglé. Laisser
+> `anthropic: {}` pour que l'utilisateur garde la main.
 
 ---
 

@@ -21,8 +21,10 @@ metadata:
 spec:
   ai:
     provider:
-      anthropic:
-        model: "claude-opus-4-6"
+      anthropic: {}
+  # Pas de `model:` ici volontairement. Le renseigner écrase le modèle demandé
+  # par le client : OpenWebUI afficherait toute la liste Claude mais chaque
+  # choix retomberait silencieusement sur le modèle épinglé.
   policies:
     auth:
       secretRef:

@@ -1,25 +1,12 @@
-# apiVersion: gateway.networking.k8s.io/v1
-# kind: HTTPRoute
-# metadata:
-#   name: anthropic
-#   namespace: agentgateway-system
-# spec:
-#   parentRefs:
-#     - group: gateway.networking.k8s.io	
-#       kind: Gateway
-#       name: agentgateway-proxy
-#       namespace: agentgateway-system
-#   rules:
-#   - backendRefs:
-#     - name: anthropic
-#       namespace: agentgateway-system
-#       group: agentgateway.dev
-#       kind: AgentgatewayBackend
-#       weight: 1	
-#     matches:	
-#       - path:	
-#           type: PathPrefix	
-#           value: /
+# Une HTTPRoute par provider, exposée sous un préfixe de chemin dédié.
+#
+# Pourquoi ce découpage : agentgateway ne sait pas agréger `/v1/models` entre
+# plusieurs backends (agentgateway#1462, kgateway#13251, tous deux ouverts).
+# Chaque provider a donc sa propre URL, et c'est OpenWebUI qui fusionne les
+# deux listes de modèles côté client.
+#
+# Le filtre URLRewrite retire le préfixe avant transmission, si bien que le
+# backend reçoit bien `/v1/models` et `/v1/chat/completions`.
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -28,18 +15,68 @@ metadata:
   namespace: agentgateway-system
 spec:
   parentRefs:
-    - group: gateway.networking.k8s.io	
+    - group: gateway.networking.k8s.io
       kind: Gateway
       name: agentgateway-proxy
       namespace: agentgateway-system
   rules:
+    # /openai/v1/... -> /v1/...
     - matches:
-      - path:
-          type: PathPrefix
-          value: /
+        - path:
+            type: PathPrefix
+            value: /openai
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
       backendRefs:
-      - name: openai
-        namespace: agentgateway-system
-        group: agentgateway.dev
-        kind: AgentgatewayBackend
-        weight: 1	
+        - name: openai
+          namespace: agentgateway-system
+          group: agentgateway.dev
+          kind: AgentgatewayBackend
+          weight: 1
+    # Catch-all : OpenAI reste le provider par défaut sur `/`, ce qui garde
+    # valides les `curl localhost:8081/v1/chat/completions` de la doc.
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: openai
+          namespace: agentgateway-system
+          group: agentgateway.dev
+          kind: AgentgatewayBackend
+          weight: 1
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: anthropic
+  namespace: agentgateway-system
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: agentgateway-proxy
+      namespace: agentgateway-system
+  rules:
+    # /anthropic/v1/... -> /v1/...
+    # Ce préfixe est plus spécifique que le catch-all `/` ci-dessus, il gagne.
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /anthropic
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
+        - name: anthropic
+          namespace: agentgateway-system
+          group: agentgateway.dev
+          kind: AgentgatewayBackend
+          weight: 1
