@@ -25,6 +25,8 @@ spec:
     namespace: openwebui
   - server: https://kubernetes.default.svc
     namespace: newt
+  - server: https://kubernetes.default.svc
+    namespace: keycloak
 
   # Les CRDs sont cluster-scoped : sans cette liste, la sync des charts *-crds
   # échoue avec "resource is not permitted in project".
