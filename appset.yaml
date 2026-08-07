@@ -16,6 +16,14 @@ spec:
       revision: main
       directories:
       - path: base/*
+      - path: base/agentgateway-policies
+        exclude: true
+      - path: base/agentgateway-mcp
+        exclude: true
+      - path: base/agentgateway-guardrail
+        exclude: true
+      - path: base/agentgateway-auth
+        exclude: true
   template:
     metadata:
       name: '{{.path.basename | normalize}}'
