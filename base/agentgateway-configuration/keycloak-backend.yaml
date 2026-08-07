@@ -1,0 +1,97 @@
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: keycloak-token-endpoint
+  namespace: keycloak
+spec:
+  static:
+    host: keycloak.keycloak.svc.cluster.local
+    port: 8080
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: agent-oauth-client
+  namespace: keycloak
+type: Opaque
+stringData:
+  clientSecret: agent-secret
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: resource-oauth-client
+  namespace: keycloak
+type: Opaque
+stringData:
+  clientSecret: resource-secret
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: jwt-idtoken
+  namespace: keycloak
+spec:
+  targetRefs:
+  - group: gateway.networking.k8s.io
+    kind: HTTPRoute
+    name: keycloak
+  traffic:
+    jwtAuthentication:
+      mode: Strict
+      providers:
+      - issuer: "http://keycloak.keycloak.svc.cluster.local:8080/realms/idjag-demo"
+        audiences:
+        - agent-client
+        jwks:
+          remote:
+            jwksPath: "/realms/idjag-demo/protocol/openid-connect/certs"
+            cacheDuration: "5m"
+            backendRef:
+              group: ""
+              kind: Service
+              name: keycloak
+              namespace: keycloak
+              port: 8080
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: backend-cross-app-access
+  namespace: keycloak
+spec:
+  targetRefs:
+  - group: ""
+    kind: Service
+    name: keycloak
+  backend:
+    auth:
+      crossAppAccess:
+        identityProvider:
+          backendRef:
+            group: agentgateway.dev
+            kind: AgentgatewayBackend
+            name: keycloak-token-endpoint
+          path: /realms/idjag-demo/protocol/openid-connect/token
+          clientAuth:
+            clientId: agent-client
+            method: ClientSecretBasic
+            secretRef:
+              name: agent-oauth-client
+        resourceAuthorizationServer:
+          backendRef:
+            group: agentgateway.dev
+            kind: AgentgatewayBackend
+            name: keycloak-token-endpoint
+          path: /realms/idjag-demo/protocol/openid-connect/token
+          clientAuth:
+            clientId: resource-client
+            method: ClientSecretBasic
+            secretRef:
+              name: resource-oauth-client
+        subjectToken:
+          source:
+            expression: jwt.rawToken.unredacted()
+        audience: https://resource.idjag.demo
+        scopes:
+        - todos.read
